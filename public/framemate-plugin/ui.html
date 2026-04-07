@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      background: #ffffff;
+      color: #0F0F1A;
+      padding: 14px 14px 12px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #EBEBEF;
+    }
+
+    .logo-icon {
+      width: 22px;
+      height: 22px;
+      background: #0F0F1A;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0F0F1A;
+      letter-spacing: -0.01em;
+    }
+
+    .badge {
+      margin-left: auto;
+      background: #F4F4F6;
+      color: #71717A;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 100px;
+      border: 1px solid #EBEBEF;
+    }
+
+    /* ── Steps ── */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      font-size: 11px;
+      color: #71717A;
+    }
+
+    .step-num {
+      width: 15px;
+      height: 15px;
+      background: #F4F4F6;
+      color: #0F0F1A;
+      border: 1px solid #EBEBEF;
+      border-radius: 50%;
+      font-size: 9px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .step strong { color: #0F0F1A; font-weight: 600; }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: #EBEBEF;
+      margin: 10px 0;
+    }
+
+    /* ── Textarea ── */
+    textarea {
+      width: 100%;
+      height: 174px;
+      background: #F9F9FB;
+      border: 1px solid #EBEBEF;
+      border-radius: 8px;
+      color: #0F0F1A;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
+      font-size: 10.5px;
+      line-height: 1.65;
+      padding: 9px 11px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    textarea:focus {
+      border-color: #0F0F1A;
+      box-shadow: 0 0 0 2px rgba(15, 15, 26, 0.08);
+      background: #ffffff;
+    }
+
+    textarea::placeholder { color: #C0C0CC; }
+
+    /* ── Actions ── */
+    .actions {
+      display: flex;
+      gap: 7px;
+      margin-top: 8px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 0 14px;
+      height: 32px;
+      transition: opacity 0.12s, transform 0.08s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      letter-spacing: -0.01em;
+    }
+
+    button:hover:not(:disabled) { opacity: 0.82; }
+    button:active:not(:disabled) { transform: scale(0.98); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    #runBtn {
+      background: #0F0F1A;
+      color: #ffffff;
+      flex: 1;
+    }
+
+    #clearBtn {
+      background: #ffffff;
+      color: #71717A;
+      border: 1px solid #EBEBEF;
+    }
+
+    #clearBtn:hover:not(:disabled) {
+      background: #F4F4F6;
+      opacity: 1;
+    }
+
+    /* ── Status ── */
+    .status {
+      margin-top: 7px;
+      padding: 6px 10px;
+      border-radius: 7px;
+      font-size: 11px;
+      display: none;
+    }
+
+    .status.show { display: flex; align-items: center; gap: 6px; }
+
+    .status.success {
+      background: #F0FDF4;
+      color: #16a34a;
+      border: 1px solid #BBF7D0;
+    }
+
+    .status.error {
+      background: #FFF1F2;
+      color: #DC2626;
+      border: 1px solid #FECDD3;
+    }
+
+    .status.loading {
+      background: #F4F4F6;
+      color: #71717A;
+      border: 1px solid #EBEBEF;
+    }
+
+    /* ── Spinner ── */
+    .spin {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border: 1.5px solid #D4D4D8;
+      border-top-color: #0F0F1A;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Shortcut hint ── */
+    .hint {
+      text-align: right;
+      font-size: 10px;
+      color: #C0C0CC;
+      margin-top: 4px;
+    }
+
+    kbd {
+      display: inline-block;
+      background: #F4F4F6;
+      border: 1px solid #EBEBEF;
+      border-radius: 3px;
+      padding: 0px 3px;
+      font-family: inherit;
+      font-size: 9.5px;
+      color: #71717A;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-icon">
+      <!-- Zap icon -->
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+    </div>
+    <span class="logo-text">Framemate</span>
+    <span class="badge">Plugin</span>
+  </div>
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <span>웹앱에서 채팅으로 UI를 요청하세요</span>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <span>코드 블록의 <strong>복사</strong> 버튼을 클릭하세요</span>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <span>아래에 붙여넣고 <strong>▶ Run</strong>을 클릭하세요</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Code input -->
+  <textarea
+    id="codeInput"
+    placeholder="(async () => {&#10;  // Framemate에서 생성된 코드를&#10;  // 여기에 붙여넣으세요 (Cmd+V)&#10;})();"
+    spellcheck="false"
+    autocomplete="off"
+  ></textarea>
+
+  <div class="hint"><kbd>⌘</kbd> + <kbd>↵</kbd> 로 바로 실행</div>
+
+  <!-- Buttons -->
+  <div class="actions">
+    <button id="runBtn" onclick="runCode()">
+      ▶&nbsp;Run
+    </button>
+    <button id="clearBtn" onclick="clearCode()">Clear</button>
+  </div>
+
+  <!-- Status -->
+  <div id="status" class="status"></div>
+
+  <script>
+    function showStatus(type, content) {
+      var el = document.getElementById('status');
+      el.innerHTML = content;
+      el.className = 'status show ' + type;
+    }
+
+    function runCode() {
+      var code = document.getElementById('codeInput').value.trim();
+      if (!code) {
+        showStatus('error', '⚠ 코드를 먼저 붙여넣어주세요.');
+        return;
+      }
+      document.getElementById('runBtn').disabled = true;
+      showStatus('loading', '<div class="spin"></div>&nbsp;Figma 캔버스에 생성 중...');
+      parent.postMessage({ pluginMessage: { type: 'run', code: code } }, '*');
+    }
+
+    function clearCode() {
+      document.getElementById('codeInput').value = '';
+      var el = document.getElementById('status');
+      el.className = 'status';
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        runCode();
+      }
+    });
+
+    window.onmessage = function(event) {
+      var msg = event.data.pluginMessage;
+      if (!msg) return;
+      document.getElementById('runBtn').disabled = false;
+      if (msg.type === 'error') {
+        showStatus('error', '✗ 오류: ' + msg.message);
+      } else if (msg.type === 'done') {
+        showStatus('success', '✓ ' + (msg.message || '생성 완료!'));
+      }
+    };
+
+    document.getElementById('codeInput').focus();
+  </script>
+</body>
+</html>
