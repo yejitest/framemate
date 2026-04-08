@@ -1,3 +1,4 @@
+import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -1390,6 +1391,144 @@ function genGenericScreen(prompt: string): string {
 })();`
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AI-powered code generation via Claude
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FIGMA_PLUGIN_SYSTEM_PROMPT = `You are a world-class Figma Plugin API code generator. You produce pixel-perfect, production-quality UI that looks like it was designed by a senior product designer.
+
+## CRITICAL: Output format
+Return ONLY a single fenced JavaScript code block. No prose, no explanation, nothing outside the fence.
+
+## CRITICAL: Design token compliance — ZERO tolerance
+The user will provide a design token table. You MUST:
+- Use ONLY the exact RGB values from that table for every fill, stroke, and text color
+- Map tokens to roles as follows:
+  | UI element                        | Token to use          |
+  |-----------------------------------|-----------------------|
+  | Page / screen background          | background            |
+  | Card, panel, sidebar background   | surface               |
+  | Elevated surface (modal, popover) | surface-dim           |
+  | Primary / CTA button fill         | primary               |
+  | Primary button label              | white                 |
+  | Ghost / secondary button stroke   | border                |
+  | Ghost / secondary button label    | text                  |
+  | All body / heading text           | text                  |
+  | Placeholder / caption / label     | muted                 |
+  | Input field background            | surface               |
+  | Input border (default)            | border                |
+  | Input border (focus)              | primary               |
+  | Dividers, separators              | border                |
+  | Success state                     | success               |
+  | Error / destructive state         | danger                |
+- NEVER invent colors outside the token table (no pure white #fff backgrounds, no gray buttons, etc.)
+
+## Figma Plugin API rules
+- Wrap everything in \`(async () => { ... })();\`
+- Call \`await figma.loadFontAsync({family, style})\` for EVERY font+weight combination used, BEFORE any text node creation
+- Font style strings: 'Regular', 'Medium', 'Semi Bold', 'Bold'
+- \`fills\` / \`strokes\` are arrays: \`[{type:'SOLID', color:{r,g,b}}]\`
+- No fill → \`node.fills = []\`
+- Sizing: \`node.resize(w, h)\` — required for non-auto-layout frames
+- Auto Layout: set \`layoutMode\`, \`primaryAxisAlignItems\`, \`counterAxisAlignItems\`, \`itemSpacing\`, padding props
+- For auto-layout children, do NOT set x/y — position is controlled by the parent
+- For fixed-position children (absolute), set x/y AFTER appending to parent
+- Always \`figma.currentPage.appendChild(topFrame)\` then \`figma.viewport.scrollAndZoomIntoView([topFrame])\`
+- End with \`figma.closePlugin('✅ 완료!')\`
+
+## Layout & quality requirements
+- Use Auto Layout wherever possible — cards, forms, buttons, nav bars, lists all benefit
+- 8px spacing grid: common values 4, 8, 12, 16, 20, 24, 32, 48
+- Type scale: caption=11, label=12, body=14, body-lg=16, title=20, heading=24, display=32+
+- For SCREENS: build 1440×900 (desktop) or 390×844 (mobile). Include ALL sections: top nav/header, main content area, footer or bottom nav. Fill the full canvas with realistic content — multiple cards, rows, copy, icons represented as rectangles
+- For COMPONENTS: build multiple states side-by-side (default, hover/active, disabled, error) with proper labels beneath each variant
+- Visual depth: cards get subtle strokes (border token, weight 1), elevated surfaces get opacity-reduced border or slight corner radius increase
+- Text hierarchy: use at least 3 different font sizes per screen; headings Bold, body Regular, labels Medium
+- Realistic copy: real-looking placeholder names, emails, dates, numbers — not "Lorem ipsum" or "text here"`
+
+async function generatePluginCodeWithAI(
+  prompt: string,
+  mode: 'component' | 'screen',
+  tokens: DSTokens,
+): Promise<string | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null
+
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+  // Resolve colors: prefer extracted DS tokens, fall back to PC defaults
+  const colors = {
+    primary:    tokens.primary    ?? PC.primary,
+    surface:    tokens.surface    ?? PC.surface,
+    surfaceDim: PC.surfaceDim,
+    border:     tokens.border     ?? PC.border,
+    text:       tokens.text       ?? PC.text,
+    muted:      tokens.muted      ?? PC.muted,
+    bg:         tokens.bg         ?? PC.bg,
+    white:      PC.white,
+    success:    tokens.success    ?? PC.success,
+    danger:     tokens.danger     ?? PC.danger,
+  }
+
+  const fontFamily = tokens.fontFamily ?? 'Inter'
+
+  // Token table injected directly into the user message so it stays in focus
+  const tokenTable = `\
+===== DESIGN TOKENS (mandatory — use ONLY these RGB values) =====
+Font family : "${fontFamily}"
+Corner radius: sm=${tokens.radiusSm}  md=${tokens.radiusMd}  lg=${tokens.radiusLg}
+Spacing      : sm=${tokens.spacingSm}  md=${tokens.spacingMd}  lg=${tokens.spacingLg}
+
+Token name      → RGB object (copy exactly into .fills / .strokes / text .fills)
+background      → ${colors.bg}
+surface         → ${colors.surface}
+surface-dim     → ${colors.surfaceDim}
+primary         → ${colors.primary}
+text            → ${colors.text}
+muted           → ${colors.muted}
+border          → ${colors.border}
+white           → ${colors.white}
+success         → ${colors.success}
+danger          → ${colors.danger}
+=================================================================`
+
+  const modeGuide = mode === 'screen'
+    ? `MODE: FULL SCREEN
+Build a complete, full-canvas screen (1440×900 desktop OR 390×844 mobile depending on context).
+Requirements:
+• Top navigation bar with logo, nav links, and action buttons
+• Rich main content area — multiple cards, data rows, or sections as appropriate
+• Every section filled with realistic placeholder content
+• Use Auto Layout for all container frames
+• Minimum 6–8 distinct content elements`
+    : `MODE: UI COMPONENT
+Build the component with ALL states laid out side-by-side: Default, Hover/Active, Disabled, Error (where applicable).
+Requirements:
+• Each state in its own frame, labeled beneath
+• All sub-elements included (icon slots, labels, helper text, etc.)
+• Use Auto Layout inside each variant frame`
+
+  const userMessage = `${tokenTable}
+
+${modeGuide}
+
+USER REQUEST: ${prompt}`
+
+  try {
+    const response = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 10000,
+      system: FIGMA_PLUGIN_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userMessage }],
+    })
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    const codeMatch = text.match(/```(?:javascript|js)?\n([\s\S]+?)\n```/)
+    return codeMatch ? codeMatch[1].trim() : text.trim()
+  } catch {
+    return null
+  }
+}
+
 function generatePluginCode(prompt: string, mode: 'component' | 'screen'): string {
   const lower = prompt.toLowerCase()
   if (mode === 'component') {
@@ -1530,15 +1669,30 @@ export async function POST(req: NextRequest) {
 
       const frameType = detectFrameType(prompt, mode)
       send({ text: `🎨 ${frameType} 프레임을 생성하는 중...\n` })
-      await delay(500)
+      await delay(300)
 
-      // Generate code and apply full DS token set
-      const rawCode = generatePluginCode(prompt, mode)
-      const pluginCode = dsTokens.appliedRoles.length > 0
-        ? applyTokens(rawCode, dsTokens)
-        : rawCode
+      // Try AI-powered generation first; fall back to templates if unavailable
+      const usingAI = !!process.env.ANTHROPIC_API_KEY
+      if (usingAI) {
+        send({ text: '🤖 AI 모델로 코드를 생성하는 중입니다...\n' })
+      }
 
-      const usedDS = dsTokens.appliedRoles.length > 0
+      const aiCode = await generatePluginCodeWithAI(prompt, mode, dsTokens)
+      let pluginCode: string
+      let usedDS: boolean
+
+      if (aiCode) {
+        pluginCode = aiCode
+        usedDS = dsTokens.appliedRoles.length > 0
+      } else {
+        // Template fallback
+        const rawCode = generatePluginCode(prompt, mode)
+        pluginCode = dsTokens.appliedRoles.length > 0
+          ? applyTokens(rawCode, dsTokens)
+          : rawCode
+        usedDS = dsTokens.appliedRoles.length > 0
+      }
+
       const codeNote = usedDS
         ? `아래 코드는 **디자인 시스템 토큰(컬러·폰트·간격·radius)이 적용된** 코드입니다. Framemate 플러그인에서 실행하세요:`
         : `아래 코드를 Framemate 플러그인에서 실행하세요:`
